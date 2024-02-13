@@ -1,0 +1,15 @@
+version: '3.5'
+
+services:
+  superset-api-layer:
+    build: ../
+    image: pnthusi/superset-api-layer:latest
+    ports:
+      - "8088:8080"
+    restart: unless-stopped
+    environment:
+      SUPERSET_USERNAME: ${SUPERSET_USERNAME}
+      SUPERSET_PASSWORD: ${SUPERSET_PASSWORD}
+      SUPERSET_PROVIDER: ${SUPERSET_PROVIDER}
+      SUPERSET_INCLUDE_REFRESH_TOKEN: ${SUPERSET_INCLUDE_REFRESH_TOKEN}
+      SUPERSET_API_BASE_URL: ${SUPERSET_API_BASE_URL}
