@@ -89,11 +89,12 @@ public class APIService {
         return dataset.get("result");
     }
 
-    private void updateColumnDescriptions(List<JsonNode> columns, Integer datasetId){
+    private void updateColumnDescriptions(List<JsonNode> columns, String tableDescription, Integer datasetId){
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         String uri  = String.format("http://%s/api/v1/dataset/%d?override_columns=true", host, datasetId);
         JsonNode requestBody = JsonNodeFactory.instance.objectNode()
+                .put("description", tableDescription)
                 .set("columns", JsonNodeFactory.instance.arrayNode()
                         .addAll(columns));
         LOG.info(requestBody.toString());
@@ -158,40 +159,64 @@ public class APIService {
             Integer id = datasets.next().intValue();
 
             JsonNode datasetInfo = getColumnsAll(id);
-            String database = datasetInfo.get("table_name").textValue();
+            String tableName = datasetInfo.get("table_name").textValue();
             Iterator<JsonNode> columns = datasetInfo.get("columns").iterator();
             List<JsonNode> newColumns = new ArrayList<>();
+            String tableDescription = null;
+            String tableGlossaryUri = String.format("https://%s/api/v1/glossaryTerms/name/National Datawarehouse Data Dictionary.%s", omHost, tableName);
+            try {
+                ResponseEntity<JsonNode> response =  defaultClient.get()
+                        .uri(tableGlossaryUri)
+                        .header("Authorization","Bearer " + jwtToken)
+                        .retrieve()
+                        .toEntity(JsonNode.class);
 
-            while(columns.hasNext()){
-                JsonNode column = columns.next();
-                String glossaryUri = String.format("https://%s/api/v1/glossaryTerms/name/National Datawarehouse Data Dictionary.%s.%s", omHost, database, column.get("column_name").textValue());
-                LOG.info("Accessing glossary URI: {}", glossaryUri);
-                try {
-                    ResponseEntity<JsonNode> response =  defaultClient.get()
-                            .uri(glossaryUri)
-                            .header("Authorization","Bearer " + jwtToken)
-                            .retrieve()
-                            .toEntity(JsonNode.class);
-
-                    if(response.getStatusCode().is2xxSuccessful()) {
-                        JsonNode dataset = response.getBody();
-                        assert dataset != null;
-                        ((ObjectNode)column).put("description", dataset.get("description"));
-                        // Remove unwanted columns
-                        newColumns.add(formatColumnNode(column, "changed_on", "created_on", "type_generic", "python_date_format"));
-                        LOG.info("Updated Column {}.{}", database, column.get("column_name").textValue());
-                    }
-                } catch (HttpClientErrorException he) {
-                    if (he.getStatusCode().is4xxClientError()) {
-                        // Log a message for 404 and skip the loop iteration
-                        LOG.warn("Glossary term not found for URI: {}", glossaryUri);
-                    } else {
-                        LOG.error("Failed to updated dataset with message {}", he.getResponseBodyAs(String.class), he);
-                    }
+                if(response.getStatusCode().is2xxSuccessful()) {
+                    JsonNode glossaryTerm = response.getBody();
+                    assert glossaryTerm != null;
+                    tableDescription = glossaryTerm.get("description").textValue();
+                }
+            } catch (HttpClientErrorException he) {
+                if (he.getStatusCode().is4xxClientError()) {
+                    // Log a message for 404 and skip the loop iteration
+                    LOG.warn("Glossary term not found for URI: {}", tableGlossaryUri);
+                } else {
+                    LOG.error("Failed to updated dataset with message {}", he.getResponseBodyAs(String.class), he);
                 }
             }
-            // update the column definitions
-            updateColumnDescriptions(newColumns, id);
+
+            if (tableDescription != null) {
+                while (columns.hasNext()) {
+                    JsonNode column = columns.next();
+                    String columnGlossaryUri = String.format("https://%s/api/v1/glossaryTerms/name/National Datawarehouse Data Dictionary.%s.%s", omHost, tableName, column.get("column_name").textValue());
+                    LOG.info("Accessing glossary URI: {}", columnGlossaryUri);
+                    try {
+                        ResponseEntity<JsonNode> response = defaultClient.get()
+                                .uri(columnGlossaryUri)
+                                .header("Authorization", "Bearer " + jwtToken)
+                                .retrieve()
+                                .toEntity(JsonNode.class);
+
+                        if (response.getStatusCode().is2xxSuccessful()) {
+                            JsonNode dataset = response.getBody();
+                            assert dataset != null;
+                            ((ObjectNode) column).put("description", dataset.get("description"));
+                            // Remove unwanted columns
+                            newColumns.add(formatColumnNode(column, "changed_on", "created_on", "type_generic", "python_date_format"));
+                            LOG.info("Updated Column {}.{}", tableName, column.get("column_name").textValue());
+                        }
+                    } catch (HttpClientErrorException he) {
+                        if (he.getStatusCode().is4xxClientError()) {
+                            // Log a message for 404 and skip the loop iteration
+                            LOG.warn("Glossary term not found for URI: {}", columnGlossaryUri);
+                        } else {
+                            LOG.error("Failed to updated dataset with message {}", he.getResponseBodyAs(String.class), he);
+                        }
+                    }
+                }
+                // update the table & column definitions
+                updateColumnDescriptions(newColumns, tableDescription, id);
+            }
         }
     }
 }
