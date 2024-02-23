@@ -22,4 +22,10 @@ public class APIController {
         apiService.refreshDatasets();
         return new ResponseEntity<>("Datasets refreshed", HttpStatus.OK);
     }
+
+    @GetMapping(path = "/datasets/description")
+    private ResponseEntity<String> testAccess() {
+        apiService.populateDescriptions();
+        return new ResponseEntity<>("Dataset Descriptions added", HttpStatus.OK);
+    }
 }

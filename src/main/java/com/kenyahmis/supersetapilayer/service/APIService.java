@@ -1,7 +1,10 @@
 package com.kenyahmis.supersetapilayer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.kenyahmis.supersetapilayer.properties.SupersetApiProperties;
+import com.kenyahmis.supersetapilayer.properties.OpenmetadataApiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -10,21 +13,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class APIService {
     private final RestClient defaultClient;
     private final SupersetApiProperties supersetApiProperties;
+    private final OpenmetadataApiProperties openmetadataApiProperties;
     private final static int DEFAULT_PAGE = 0;
     private final static int DEFAULT_PAGE_SIZE = 200;
     private final Logger LOG = LoggerFactory.getLogger(APIService.class);
 
-    public APIService(RestClient defaultClient, SupersetApiProperties supersetApiProperties) {
+    public APIService(RestClient defaultClient, SupersetApiProperties supersetApiProperties, OpenmetadataApiProperties openmetadataApiProperties) {
         this.defaultClient = defaultClient;
         this.supersetApiProperties = supersetApiProperties;
+        this.openmetadataApiProperties = openmetadataApiProperties;
     }
 
     private String getAccessToken() {
@@ -70,6 +73,51 @@ public class APIService {
         return datasets;
     }
 
+    private JsonNode getColumnsAll(Integer datasetId){
+        String token = getAccessToken();
+        final String host = supersetApiProperties.getBaseUrl();
+        //TODO: Only select columns that are needed
+        String uri  = String.format("http://%s/api/v1/dataset/%d", host, datasetId);
+        LOG.info("URI is: {}", uri);
+        ResponseEntity<JsonNode> response =  defaultClient.get()
+                .uri(uri)
+                .header("Authorization","Bearer " + token)
+                .retrieve()
+                .toEntity(JsonNode.class);
+        JsonNode dataset = response.getBody();
+        assert dataset != null;
+        return dataset.get("result");
+    }
+
+    private void updateColumnDescriptions(List<JsonNode> columns, String tableDescription, Integer datasetId){
+        String token = getAccessToken();
+        final String host = supersetApiProperties.getBaseUrl();
+        String uri  = String.format("http://%s/api/v1/dataset/%d?override_columns=true", host, datasetId);
+        JsonNode requestBody = JsonNodeFactory.instance.objectNode()
+                .put("description", tableDescription)
+                .set("columns", JsonNodeFactory.instance.arrayNode()
+                        .addAll(columns));
+        LOG.info(requestBody.toString());
+        LOG.info("URI is: {}", uri);
+        ResponseEntity<JsonNode> response =  defaultClient.put()
+                .uri(uri)
+                .header("Authorization","Bearer " + token)
+                .body(requestBody)
+                .retrieve()
+                .toEntity(JsonNode.class);
+    }
+
+    private JsonNode formatColumnNode(JsonNode column, String... keysToRemove) {
+        if (column.isObject()) {
+            ObjectNode modifiedNode = ((ObjectNode) column).deepCopy();
+            for (String key : keysToRemove) {
+                modifiedNode.remove(key);
+            }
+            return modifiedNode;
+        }
+        return column;
+    }
+
     public void refreshDatasets() {
         Iterator<JsonNode> datasets =  getDatasets();
         if (datasets == null) {
@@ -95,6 +143,79 @@ public class APIService {
                     he.getResponseBodyAs(String.class);
                     LOG.error("Failed to updated dataset {} with message {}", id, he.getResponseBodyAs(String.class), he );
                 }
+            }
+        }
+    }
+
+    public void populateDescriptions() {
+        Iterator<JsonNode> datasets =  getDatasets();
+        if (datasets == null) {
+            LOG.info("No datasets found");
+            return;
+        }
+        final String omHost = openmetadataApiProperties.getBaseUrl();
+        final String jwtToken = openmetadataApiProperties.getJwtToken();
+        while (datasets.hasNext()) {
+            Integer id = datasets.next().intValue();
+
+            JsonNode datasetInfo = getColumnsAll(id);
+            String tableName = datasetInfo.get("table_name").textValue();
+            Iterator<JsonNode> columns = datasetInfo.get("columns").iterator();
+            List<JsonNode> newColumns = new ArrayList<>();
+            String tableDescription = null;
+            String tableGlossaryUri = String.format("https://%s/api/v1/glossaryTerms/name/National Datawarehouse Data Dictionary.%s", omHost, tableName);
+            try {
+                ResponseEntity<JsonNode> response =  defaultClient.get()
+                        .uri(tableGlossaryUri)
+                        .header("Authorization","Bearer " + jwtToken)
+                        .retrieve()
+                        .toEntity(JsonNode.class);
+
+                if(response.getStatusCode().is2xxSuccessful()) {
+                    JsonNode glossaryTerm = response.getBody();
+                    assert glossaryTerm != null;
+                    tableDescription = glossaryTerm.get("description").textValue();
+                }
+            } catch (HttpClientErrorException he) {
+                if (he.getStatusCode().is4xxClientError()) {
+                    // Log a message for 404 and skip the loop iteration
+                    LOG.warn("Glossary term not found for URI: {}", tableGlossaryUri);
+                } else {
+                    LOG.error("Failed to updated dataset with message {}", he.getResponseBodyAs(String.class), he);
+                }
+            }
+
+            if (tableDescription != null) {
+                while (columns.hasNext()) {
+                    JsonNode column = columns.next();
+                    String columnGlossaryUri = String.format("https://%s/api/v1/glossaryTerms/name/National Datawarehouse Data Dictionary.%s.%s", omHost, tableName, column.get("column_name").textValue());
+                    LOG.info("Accessing glossary URI: {}", columnGlossaryUri);
+                    try {
+                        ResponseEntity<JsonNode> response = defaultClient.get()
+                                .uri(columnGlossaryUri)
+                                .header("Authorization", "Bearer " + jwtToken)
+                                .retrieve()
+                                .toEntity(JsonNode.class);
+
+                        if (response.getStatusCode().is2xxSuccessful()) {
+                            JsonNode dataset = response.getBody();
+                            assert dataset != null;
+                            ((ObjectNode) column).put("description", dataset.get("description"));
+                            // Remove unwanted columns
+                            newColumns.add(formatColumnNode(column, "changed_on", "created_on", "type_generic", "python_date_format"));
+                            LOG.info("Updated Column {}.{}", tableName, column.get("column_name").textValue());
+                        }
+                    } catch (HttpClientErrorException he) {
+                        if (he.getStatusCode().is4xxClientError()) {
+                            // Log a message for 404 and skip the loop iteration
+                            LOG.warn("Glossary term not found for URI: {}", columnGlossaryUri);
+                        } else {
+                            LOG.error("Failed to updated dataset with message {}", he.getResponseBodyAs(String.class), he);
+                        }
+                    }
+                }
+                // update the table & column definitions
+                updateColumnDescriptions(newColumns, tableDescription, id);
             }
         }
     }
