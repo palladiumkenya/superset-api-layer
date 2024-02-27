@@ -5,7 +5,7 @@ services:
     build: ../
     image: pnthusi/superset-api-layer:latest
     ports:
-      - "8088:8080"
+      - "8099:8080"
     restart: unless-stopped
     environment:
       SUPERSET_USERNAME: ${SUPERSET_USERNAME}
@@ -13,3 +13,5 @@ services:
       SUPERSET_PROVIDER: ${SUPERSET_PROVIDER}
       SUPERSET_INCLUDE_REFRESH_TOKEN: ${SUPERSET_INCLUDE_REFRESH_TOKEN}
       SUPERSET_API_BASE_URL: ${SUPERSET_API_BASE_URL}
+      OPENMETADATA_URL: ${OPENMETADATA_URL}
+      OPENMETADATA_JWT_TOKEN: ${OPENMETADATA_JWT_TOKEN}
