@@ -67,7 +67,6 @@ public class APIService {
         List<String> newDatasets = getTargetSymmetricDifference(getReportingDbTableNames(), getDatasetNames())
                 .stream().filter(e -> !exclusions.contains(e)).toList();
         LOG.info("Found {} new datasets", newDatasets.size());
-        newDatasets.forEach(System.out::println);
         newDatasets.forEach(this::addDataset);
         // TODO implement RLS
     }
@@ -113,7 +112,6 @@ public class APIService {
                 datasetNames.add(tableNameNode.get("table_name").textValue());
             }
         }
-        datasetNames.forEach(System.out::println);
         return datasetNames;
     }
     private Iterator<JsonNode> getDatasetIds(){
@@ -137,7 +135,7 @@ public class APIService {
     private void addDataset(String datasetName) {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
-        String uri  = String.format("http://%s/api/v1/dataset", host);
+        String uri  = String.format("http://%s/api/v1/dataset/", host);
         LOG.info("Add dataset URI: {}", uri);
         int reportingDbId = 2;
         int adminId = 1;
@@ -150,18 +148,17 @@ public class APIService {
                         .add(JsonNodeFactory.instance.numberNode(adminId)));
         LOG.info("Add dataset request: {}", requestBody.toString());
         try {
-//            ResponseEntity<JsonNode> response =
-            ResponseEntity<String> response = defaultClient
-                            .post()
-                            .uri(uri)
-                            .header("Authorization","Bearer " + token)
-                            .contentType(MediaType.APPLICATION_JSON)
+            ResponseEntity<Void> response = defaultClient
+                    .post()
+                    .uri(uri)
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
                     .body(requestBody)
                     .retrieve()
-                            .toEntity(String.class);
-//                    .toString();
-                    LOG.info("Add dataset response: {}", response.toString());
-//                    .toEntity(JsonNode.class);
+                    .toBodilessEntity();
+            if (response.getStatusCode().is2xxSuccessful()) {
+                LOG.info("Successfully created dataset: {}", datasetName);
+            }
         } catch (HttpClientErrorException ce) {
             LOG.error("Failed to add dataset {} with message {}", datasetName, ce.getResponseBodyAs(String.class), ce );
         }
