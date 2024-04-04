@@ -163,14 +163,12 @@ public class APIService {
         String token = null;
         if (node != null) {
             token = node.get("access_token").textValue();
-           LOG.info(node.toString());
         }
         return token;
     }
 
     private List<String> getTargetSymmetricDifference(List<String> source, List<String> target) {
-        List<String> newDatasets = source.stream().filter(element -> !target.contains(element)).toList();
-        return newDatasets;
+        return source.stream().filter(element -> !target.contains(element)).toList();
     }
 
     private List<String> getReportingDbTableNames() {
@@ -181,17 +179,8 @@ public class APIService {
                 FROM sys.tables;
                 END
                 """;
-        List<String> tablesList = null;
-        try {
-            tablesList = mssqlJdbcTemplate.queryForList(fetchReportingTablesQuery, String.class);
-        } catch (Exception e) {
-            LOG.error("Failed to fetch reporting DB tables" , e);
-        }
-        if (tablesList != null) {
-            LOG.info("Fetched {} tables from reporting database", tablesList.size());
-            tablesList.forEach(System.out::println);
-        }
-
+        List<String> tablesList = mssqlJdbcTemplate.queryForList(fetchReportingTablesQuery, String.class);
+        LOG.info("Fetched {} tables from reporting database", tablesList.size());
         return tablesList;
     }
     private List<String> getDatasetNames() {
@@ -239,7 +228,6 @@ public class APIService {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         String uri  = String.format("http://%s/api/v1/dataset/", host);
-        LOG.info("Add dataset URI: {}", uri);
         int reportingDbId = 2;
         int adminId = 1;
         JsonNode requestBody = JsonNodeFactory.instance.objectNode()
@@ -249,7 +237,6 @@ public class APIService {
                 .put("table_name", datasetName)
                 .set("owners", JsonNodeFactory.instance.arrayNode()
                         .add(JsonNodeFactory.instance.numberNode(adminId)));
-        LOG.info("Add dataset request: {}", requestBody.toString());
         try {
             ResponseEntity<Void> response = defaultClient
                     .post()
@@ -281,7 +268,6 @@ public class APIService {
         assert dataset != null;
         return dataset.get("result");
     }
-
 
     private void updateColumnDescriptions(List<JsonNode> columns, String tableDescription, Integer datasetId){
         String token = getAccessToken();
