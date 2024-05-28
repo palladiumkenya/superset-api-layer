@@ -228,14 +228,16 @@ public class APIService {
         for (String datasetName : reportingDbColumnMap.keySet()) {
             if (supersetColumnMap.containsKey(datasetName)) {
                 List<String> newColumns = getTargetSymmetricDifference(reportingDbColumnMap.get(datasetName), supersetColumnMap.get(datasetName));
-                LOG.info("Updated Columns {}.{}", datasetName, Arrays.toString(newColumns.toArray()));
+                if (!newColumns.isEmpty()) {
+                    LOG.info("Updated Columns {}.{}", datasetName, Arrays.toString(newColumns.toArray()));
+                }
             }
         }
     }
     private JsonNode getSupersetColumns(Integer datasetId) {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
-        final String columns = "column.column_name,table_name";
+        final String columns = "columns.column_name,table_name";
         String uri  = String.format("http://%s/api/v1/dataset/%d?q=(page:%d,page_size:%d,columns:!(%s))", host, datasetId, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
         LOG.info("URI is: {}", uri);
         ResponseEntity<JsonNode> response =  defaultClient.get()
