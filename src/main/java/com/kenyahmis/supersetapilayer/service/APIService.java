@@ -140,7 +140,7 @@ public class APIService {
         // TODO implement RLS
     }
     private List<String> getNewDatasets() {
-        List<String> exclusions = List.of("QueryBuilders", "QueryTransformers", "sysdiagrams");
+        List<String> exclusions = List.of("QueryBuilders", "QueryTransformers", "sysdiagrams", "AggregateConcordanceTemp");
         List<String> newDatasets = getTargetSymmetricDifference(getReportingDbTableNames(), getSupersetDatasetNames())
                 .stream().filter(e -> !exclusions.contains(e)).toList();
         LOG.info("Found {} new datasets", newDatasets.size());
@@ -229,6 +229,8 @@ public class APIService {
             if (supersetColumnMap.containsKey(datasetName)) {
                 List<String> newColumns = getTargetSymmetricDifference(reportingDbColumnMap.get(datasetName), supersetColumnMap.get(datasetName));
                 if (!newColumns.isEmpty()) {
+                    LOG.info("source columns {}", Arrays.toString(reportingDbColumnMap.get(datasetName).toArray()));
+                    LOG.info("target columns {}", Arrays.toString(supersetColumnMap.get(datasetName).toArray()));
                     LOG.info("Updated Columns {}.{}", datasetName, Arrays.toString(newColumns.toArray()));
                 }
             }
