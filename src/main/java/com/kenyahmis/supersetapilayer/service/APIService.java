@@ -207,11 +207,14 @@ public class APIService {
             if (node != null) {
                 Iterator<JsonNode> columnNames = node.get("result").get("columns").iterator();
                 String datasetName = node.get("result").get("table_name").textValue();
-                List<String> columnNameList = new ArrayList<>();
-                while (columnNames.hasNext()) {
-                    columnNameList.add(columnNames.next().textValue());
+                if (datasetName != null) {
+                    List<String> columnNameList = new ArrayList<>();
+                    while (columnNames.hasNext()) {
+                        columnNameList.add(columnNames.next().textValue());
+                    }
+                    columnsMap.put(datasetName, columnNameList);
                 }
-                columnsMap.put(datasetName, columnNameList);
+
             }
         }
         return columnsMap;
@@ -232,7 +235,7 @@ public class APIService {
     private JsonNode getSupersetColumns(Integer datasetId) {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
-        final String columns = "column.column_name";
+        final String columns = "column.column_name,table_name";
         String uri  = String.format("http://%s/api/v1/dataset/%d?q=(page:%d,page_size:%d,columns:!(%s))", host, datasetId, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
         LOG.info("URI is: {}", uri);
         ResponseEntity<JsonNode> response =  defaultClient.get()
