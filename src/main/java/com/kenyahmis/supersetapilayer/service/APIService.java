@@ -244,12 +244,10 @@ public class APIService {
                 List<String> deletedColumns = getTargetSymmetricDifference(supersetColumnMap.get(datasetName), reportingDbColumnMap.get(datasetName));
                 if (!newColumns.isEmpty()) {
                     changelogBuilder.append("- New columns in ").append(datasetName).append(": ").append(Arrays.toString(newColumns.toArray())).append("\n");
-//                    LOG.info("- New columns in {}: {} \n", datasetName, Arrays.toString(newColumns.toArray()));
                     shareChangeLog = true;
                 }
                 if (!deletedColumns.isEmpty()) {
                     changelogBuilder.append("- Deleted columns in ").append(datasetName).append(": ").append(Arrays.toString(deletedColumns.toArray())).append("\n");
-//                    LOG.info("- Deleted columns in {}: {}\n", datasetName, Arrays.toString(deletedColumns.toArray()));
                     shareChangeLog = true;
                 }
             }
@@ -262,7 +260,6 @@ public class APIService {
         final String host = supersetApiProperties.getBaseUrl();
         final String columns = "columns.column_name,table_name";
         String uri  = String.format("http://%s/api/v1/dataset/%d?q=(page:%d,page_size:%d,columns:!(%s))", host, datasetId, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
-        LOG.info("URI is: {}", uri);
         ResponseEntity<JsonNode> response =  defaultClient.get()
                 .uri(uri)
                 .header("Authorization","Bearer " + token)
@@ -284,7 +281,6 @@ public class APIService {
         return supersetDatasetIds;
     }
     private JsonNode getSupersetDatasets() {
-//        List<String> datasetNames = new ArrayList<>();
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         final String columns = "table_name";
@@ -401,6 +397,4 @@ public class APIService {
         }
         return column;
     }
-
-
 }
