@@ -219,7 +219,7 @@ public class APIService {
         return columnsMap;
     }
 
-    public void generateAncShareChangeLog() {
+    public void generateAndShareChangeLog() {
         if (generateChangeLog()) {
             //TODO  share log via email
         }

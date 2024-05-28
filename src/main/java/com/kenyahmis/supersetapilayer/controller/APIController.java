@@ -36,7 +36,7 @@ public class APIController {
     }
     @GetMapping(path = "/dataset/changelog")
     private ResponseEntity<String> generateChangeLog() {
-            apiService.generateAncShareChangeLog();
+            apiService.generateAndShareChangeLog();
             return new ResponseEntity<>("Dataset changelog generated", HttpStatus.OK);
     }
 }
