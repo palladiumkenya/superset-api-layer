@@ -214,7 +214,6 @@ public class APIService {
                     }
                     columnsMap.put(datasetName, columnNameList);
                 }
-
             }
         }
         return columnsMap;
@@ -228,10 +227,14 @@ public class APIService {
         for (String datasetName : reportingDbColumnMap.keySet()) {
             if (supersetColumnMap.containsKey(datasetName)) {
                 List<String> newColumns = getTargetSymmetricDifference(reportingDbColumnMap.get(datasetName), supersetColumnMap.get(datasetName));
+                List<String> deletedColumns = getTargetSymmetricDifference(supersetColumnMap.get(datasetName), reportingDbColumnMap.get(datasetName));
+                LOG.info("source columns {}", Arrays.toString(reportingDbColumnMap.get(datasetName).toArray()));
+                LOG.info("target columns {}", Arrays.toString(supersetColumnMap.get(datasetName).toArray()));
                 if (!newColumns.isEmpty()) {
-                    LOG.info("source columns {}", Arrays.toString(reportingDbColumnMap.get(datasetName).toArray()));
-                    LOG.info("target columns {}", Arrays.toString(supersetColumnMap.get(datasetName).toArray()));
-                    LOG.info("Updated Columns {}.{}", datasetName, Arrays.toString(newColumns.toArray()));
+                    LOG.info("New Columns {}.{}", datasetName, Arrays.toString(newColumns.toArray()));
+                }
+                if (!deletedColumns.isEmpty()) {
+                    LOG.info("Deleted Columns {}.{}", datasetName, Arrays.toString(deletedColumns.toArray()));
                 }
             }
         }
