@@ -210,7 +210,7 @@ public class APIService {
                 if (datasetName != null) {
                     List<String> columnNameList = new ArrayList<>();
                     while (columnNames.hasNext()) {
-                        columnNameList.add(columnNames.next().textValue());
+                        columnNameList.add(columnNames.next().get("column_name").textValue());
                     }
                     columnsMap.put(datasetName, columnNameList);
                 }
