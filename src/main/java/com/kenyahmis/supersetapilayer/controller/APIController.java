@@ -33,4 +33,8 @@ public class APIController {
         apiService.addNewDatasets();
         return new ResponseEntity<>("New datasets synced", HttpStatus.OK);
     }
+    private ResponseEntity<String> generateChangeLog() {
+            apiService.generateChangeLog();
+            return new ResponseEntity<>("Dataset changelog generated", HttpStatus.OK);
+    }
 }

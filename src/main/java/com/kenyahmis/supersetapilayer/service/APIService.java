@@ -136,12 +136,15 @@ public class APIService {
         }
     }
     public void addNewDatasets() {
+      getNewDatasets().forEach(this::addDataset);
+        // TODO implement RLS
+    }
+    private List<String> getNewDatasets() {
         List<String> exclusions = List.of("QueryBuilders", "QueryTransformers", "sysdiagrams");
-        List<String> newDatasets = getTargetSymmetricDifference(getReportingDbTableNames(), getDatasetNames())
+        List<String> newDatasets = getTargetSymmetricDifference(getReportingDbTableNames(), getSupersetDatasetNames())
                 .stream().filter(e -> !exclusions.contains(e)).toList();
         LOG.info("Found {} new datasets", newDatasets.size());
-        newDatasets.forEach(this::addDataset);
-        // TODO implement RLS
+        return newDatasets;
     }
 
     private String getAccessToken() {
@@ -183,8 +186,77 @@ public class APIService {
         LOG.info("Fetched {} tables from reporting database", tablesList.size());
         return tablesList;
     }
-    private List<String> getDatasetNames() {
-        List<String> datasetNames = new ArrayList<>();
+    private Map<String, List<String>> getReportingDbColumnNames(List<String> tableNames) {
+        Map<String, List<String>> columnsMap = new HashMap<>();
+        String fetchReportingColumnNames = """
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = N'%s'
+                """;
+        tableNames.forEach(tableName -> {
+            List<String> coumnList = mssqlJdbcTemplate.queryForList(String.format(fetchReportingColumnNames, tableName), String.class);
+            columnsMap.put(tableName, coumnList);
+        });
+        return columnsMap;
+    }
+
+    private Map<String, List<String>> getSupersetColumnNames(List<Integer> tablesIds) {
+        Map<String, List<String>> columnsMap = new HashMap<>();
+        for (Integer tableId : tablesIds) {
+            JsonNode node = getSupersetColumns(tableId);
+            if (node != null) {
+                Iterator<JsonNode> columnNames = node.get("result").get("columns").iterator();
+                String datasetName = node.get("result").get("table_name").textValue();
+                List<String> columnNameList = new ArrayList<>();
+                while (columnNames.hasNext()) {
+                    columnNameList.add(columnNames.next().textValue());
+                }
+                columnsMap.put(datasetName, columnNameList);
+            }
+        }
+        return columnsMap;
+    }
+
+    public void generateChangeLog() {
+        Map<String, List<String>> reportingDbColumnMap = getReportingDbColumnNames(getReportingDbTableNames());
+        Map<String, List<String>> supersetColumnMap = getSupersetColumnNames(getSupersetDatasetIds());
+
+        LOG.info("New datasets: {}", Arrays.toString(getNewDatasets().toArray()));
+        for (String datasetName : reportingDbColumnMap.keySet()) {
+            if (supersetColumnMap.containsKey(datasetName)) {
+                List<String> newColumns = getTargetSymmetricDifference(reportingDbColumnMap.get(datasetName), supersetColumnMap.get(datasetName));
+                LOG.info("Updated Columns {}.{}", datasetName, Arrays.toString(newColumns.toArray()));
+            }
+        }
+    }
+    private JsonNode getSupersetColumns(Integer datasetId) {
+        String token = getAccessToken();
+        final String host = supersetApiProperties.getBaseUrl();
+        final String columns = "column.column_name";
+        String uri  = String.format("http://%s/api/v1/dataset/%d?q=(page:%d,page_size:%d,columns:!(%s))", host, datasetId, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
+        LOG.info("URI is: {}", uri);
+        ResponseEntity<JsonNode> response =  defaultClient.get()
+                .uri(uri)
+                .header("Authorization","Bearer " + token)
+                .retrieve()
+                .toEntity(JsonNode.class);
+        return response.getBody();
+    }
+    private List<Integer> getSupersetDatasetIds() {
+        List<Integer> supersetDatasetIds = new ArrayList<>();
+        JsonNode node = getSupersetDatasets();
+        Iterator<JsonNode> datasets = null;
+        if (node != null) {
+            datasets = node.get("ids").iterator();
+            while (datasets.hasNext()) {
+                JsonNode datasetId = datasets.next();
+                supersetDatasetIds.add(datasetId.intValue());
+            }
+        }
+        return supersetDatasetIds;
+    }
+    private JsonNode getSupersetDatasets() {
+//        List<String> datasetNames = new ArrayList<>();
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         final String columns = "table_name";
@@ -195,7 +267,11 @@ public class APIService {
                 .header("Authorization","Bearer " + token)
                 .retrieve()
                 .toEntity(JsonNode.class);
-        JsonNode node = response.getBody();
+        return response.getBody();
+    }
+    private List<String> getSupersetDatasetNames() {
+        List<String> datasetNames = new ArrayList<>();
+        JsonNode node = getSupersetDatasets();
         Iterator<JsonNode> datasets = null;
         if (node != null) {
             datasets = node.get("result").iterator();
