@@ -220,22 +220,22 @@ public class APIService {
     }
 
     public void generateAndShareChangeLog() {
-        if (generateChangeLog()) {
+        String changeLog = generateChangeLog();
+        int count = changeLog.split("\r\n|\r|\n").length;
+        LOG.info("Generated {} changes log count", count);
+        if (count > 1) {
             //TODO  share log via email
         }
     }
-    private Boolean generateChangeLog() {
+    private String generateChangeLog() {
         Map<String, List<String>> reportingDbColumnMap = getReportingDbColumnNames(getReportingDbTableNames());
         Map<String, List<String>> supersetColumnMap = getSupersetColumnNames(getSupersetDatasetIds());
         List<String> newDatasets = getNewDatasets();
-        boolean shareChangeLog = false;
         StringBuilder changelogBuilder = new StringBuilder();
-        changelogBuilder.append("New Datasets: \n");
+
         if (!newDatasets.isEmpty()) {
+            changelogBuilder.append("New Datasets: \n");
             changelogBuilder.append(Arrays.toString(getNewDatasets().toArray())).append("\n");
-            shareChangeLog = true;
-        } else {
-            changelogBuilder.append("===No new datasets===\n");
         }
         changelogBuilder.append("Updated Columns: \n");
         for (String datasetName : reportingDbColumnMap.keySet()) {
@@ -244,16 +244,15 @@ public class APIService {
                 List<String> deletedColumns = getTargetSymmetricDifference(supersetColumnMap.get(datasetName), reportingDbColumnMap.get(datasetName));
                 if (!newColumns.isEmpty()) {
                     changelogBuilder.append("- New columns in ").append(datasetName).append(": ").append(Arrays.toString(newColumns.toArray())).append("\n");
-                    shareChangeLog = true;
                 }
                 if (!deletedColumns.isEmpty()) {
                     changelogBuilder.append("- Deleted columns in ").append(datasetName).append(": ").append(Arrays.toString(deletedColumns.toArray())).append("\n");
-                    shareChangeLog = true;
                 }
             }
         }
-        LOG.info(changelogBuilder.toString());
-        return shareChangeLog;
+        String changeLog = changelogBuilder.toString();
+        LOG.info(changeLog);
+        return changeLog;
     }
     private JsonNode getSupersetColumns(Integer datasetId) {
         String token = getAccessToken();
