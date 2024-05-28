@@ -219,25 +219,43 @@ public class APIService {
         return columnsMap;
     }
 
-    public void generateChangeLog() {
+    public void generateAncShareChangeLog() {
+        if (generateChangeLog()) {
+            //TODO  share log via email
+        }
+    }
+    private Boolean generateChangeLog() {
         Map<String, List<String>> reportingDbColumnMap = getReportingDbColumnNames(getReportingDbTableNames());
         Map<String, List<String>> supersetColumnMap = getSupersetColumnNames(getSupersetDatasetIds());
-
-        LOG.info("New datasets: {}", Arrays.toString(getNewDatasets().toArray()));
+        List<String> newDatasets = getNewDatasets();
+        boolean shareChangeLog = false;
+        StringBuilder changelogBuilder = new StringBuilder();
+        changelogBuilder.append("New Datasets: \n");
+        if (!newDatasets.isEmpty()) {
+            changelogBuilder.append(Arrays.toString(getNewDatasets().toArray())).append("\n");
+            shareChangeLog = true;
+        } else {
+            changelogBuilder.append("===No new datasets===\n");
+        }
+        changelogBuilder.append("Updated Columns: \n");
         for (String datasetName : reportingDbColumnMap.keySet()) {
             if (supersetColumnMap.containsKey(datasetName)) {
                 List<String> newColumns = getTargetSymmetricDifference(reportingDbColumnMap.get(datasetName), supersetColumnMap.get(datasetName));
                 List<String> deletedColumns = getTargetSymmetricDifference(supersetColumnMap.get(datasetName), reportingDbColumnMap.get(datasetName));
-                LOG.info("source columns {}", Arrays.toString(reportingDbColumnMap.get(datasetName).toArray()));
-                LOG.info("target columns {}", Arrays.toString(supersetColumnMap.get(datasetName).toArray()));
                 if (!newColumns.isEmpty()) {
-                    LOG.info("New Columns {}.{}", datasetName, Arrays.toString(newColumns.toArray()));
+                    changelogBuilder.append("- New columns in ").append(datasetName).append(": ").append(Arrays.toString(newColumns.toArray())).append("\n");
+//                    LOG.info("- New columns in {}: {} \n", datasetName, Arrays.toString(newColumns.toArray()));
+                    shareChangeLog = true;
                 }
                 if (!deletedColumns.isEmpty()) {
-                    LOG.info("Deleted Columns {}.{}", datasetName, Arrays.toString(deletedColumns.toArray()));
+                    changelogBuilder.append("- Deleted columns in ").append(datasetName).append(": ").append(Arrays.toString(deletedColumns.toArray())).append("\n");
+//                    LOG.info("- Deleted columns in {}: {}\n", datasetName, Arrays.toString(deletedColumns.toArray()));
+                    shareChangeLog = true;
                 }
             }
         }
+        LOG.info(changelogBuilder.toString());
+        return shareChangeLog;
     }
     private JsonNode getSupersetColumns(Integer datasetId) {
         String token = getAccessToken();
