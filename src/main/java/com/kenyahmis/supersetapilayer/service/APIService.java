@@ -242,10 +242,9 @@ public class APIService {
         StringBuilder changelogBuilder = new StringBuilder();
 
         if (!newDatasets.isEmpty()) {
-            changelogBuilder.append("New Datasets: \n");
+            changelogBuilder.append("New Datasets: \n\n");
             changelogBuilder.append(Arrays.toString(getNewDatasets().toArray())).append("\n");
         }
-        changelogBuilder.append("Updated Columns: \n");
         for (String datasetName : reportingDbColumnMap.keySet()) {
             if (supersetColumnMap.containsKey(datasetName)) {
                 List<String> newColumns = getTargetSymmetricDifference(reportingDbColumnMap.get(datasetName), supersetColumnMap.get(datasetName));
