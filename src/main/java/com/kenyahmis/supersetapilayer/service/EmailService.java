@@ -19,7 +19,7 @@ public class EmailService {
     private final static String REPLY_EMAIL = "no-replymg.kenyahmis.org";
     private final static Logger LOG = LoggerFactory.getLogger(EmailService.class);
 
-    public EmailService(Session mailSession) {
+    public EmailService(final Session mailSession) {
         this.mailSession = mailSession;
     }
 

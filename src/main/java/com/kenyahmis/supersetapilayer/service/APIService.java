@@ -231,7 +231,7 @@ public class APIService {
         LOG.info("Generated {} changes log count", count);
         if (count > 1) {
             final String subject = "Self-service Change log";
-            emailService.sendEmail("selfservice-dwh@mg.kenyahmis.org", mailProperties.getProperties().get("mail.properties.recipients"),
+            emailService.sendEmail("selfservice-dwh@mg.kenyahmis.org", mailProperties.getProperties().get("recipients"),
                     subject, changeLog);
         }
     }
