@@ -7,6 +7,7 @@ import com.kenyahmis.supersetapilayer.properties.SupersetApiProperties;
 import com.kenyahmis.supersetapilayer.properties.OpenmetadataApiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.mail.MailProperties;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,17 +22,22 @@ public class APIService {
     private final RestClient defaultClient;
     private final SupersetApiProperties supersetApiProperties;
     private final OpenmetadataApiProperties openmetadataApiProperties;
+    private final MailProperties mailProperties;
     private final JdbcTemplate mssqlJdbcTemplate;
+    private final EmailService emailService;
     private final static int DEFAULT_PAGE = 0;
     private final static int DEFAULT_PAGE_SIZE = 200;
     private final Logger LOG = LoggerFactory.getLogger(APIService.class);
 
-    public APIService(RestClient defaultClient, SupersetApiProperties supersetApiProperties, OpenmetadataApiProperties openmetadataApiProperties,
+    public APIService(RestClient defaultClient, SupersetApiProperties supersetApiProperties,
+                      OpenmetadataApiProperties openmetadataApiProperties, MailProperties mailProperties, EmailService emailService,
                       JdbcTemplate mssqlJdbcTemplate) {
         this.defaultClient = defaultClient;
         this.supersetApiProperties = supersetApiProperties;
         this.openmetadataApiProperties = openmetadataApiProperties;
+        this.mailProperties = mailProperties;
         this.mssqlJdbcTemplate = mssqlJdbcTemplate;
+        this.emailService = emailService;
     }
 
     public void refreshDatasets() {
@@ -224,7 +230,9 @@ public class APIService {
         int count = changeLog.split("\r\n|\r|\n").length;
         LOG.info("Generated {} changes log count", count);
         if (count > 1) {
-            //TODO  share log via email
+            final String subject = "Self-service Change log";
+            emailService.sendEmail("selfservice-dwh@mg.kenyahmis.org", mailProperties.getProperties().get("mail.properties.recipients"),
+                    subject, changeLog);
         }
     }
     private String generateChangeLog() {
