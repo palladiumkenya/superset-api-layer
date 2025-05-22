@@ -51,7 +51,7 @@ public class APIService {
         while (datasets.hasNext()) {
             Integer id = datasets.next().intValue();
             if (id > 0) {
-                String uri  = String.format("http://%s/api/v1/dataset/%d/refresh", host, id);
+                String uri  = String.format("%s/api/v1/dataset/%d/refresh", host, id);
                 try {
                     ResponseEntity<JsonNode> response =  defaultClient.put()
                             .uri(uri)
@@ -161,7 +161,7 @@ public class APIService {
         requestBody.put("username", supersetApiProperties.getUsername());
         String baseUrl = supersetApiProperties.getBaseUrl();
 
-        String uri = String.format("http://%s/api/v1/security/login", baseUrl);
+        String uri = String.format("%s/api/v1/security/login", baseUrl);
         ResponseEntity<JsonNode> response =  defaultClient.post()
                 .uri(uri)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -265,7 +265,7 @@ public class APIService {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         final String columns = "columns.column_name,table_name";
-        String uri  = String.format("http://%s/api/v1/dataset/%d?q=(page:%d,page_size:%d,columns:!(%s))", host, datasetId, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
+        String uri  = String.format("%s/api/v1/dataset/%d?q=(page:%d,page_size:%d,columns:!(%s))", host, datasetId, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
         ResponseEntity<JsonNode> response =  defaultClient.get()
                 .uri(uri)
                 .header("Authorization","Bearer " + token)
@@ -290,7 +290,7 @@ public class APIService {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         final String columns = "table_name";
-        String uri  = String.format("http://%s/api/v1/dataset/?q=(page:%d,page_size:%d,columns:!(%s))", host, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
+        String uri  = String.format("%s/api/v1/dataset/?q=(page:%d,page_size:%d,columns:!(%s))", host, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
         LOG.info("URI is: {}", uri);
         ResponseEntity<JsonNode> response =  defaultClient.get()
                 .uri(uri)
@@ -316,7 +316,7 @@ public class APIService {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         final String columns = "id";
-        String uri  = String.format("http://%s/api/v1/dataset/?q=(page:%d,page_size:%d,columns:!(%s))", host, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
+        String uri  = String.format("%s/api/v1/dataset/?q=(page:%d,page_size:%d,columns:!(%s))", host, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, columns);
         LOG.info("URI is: {}", uri);
         ResponseEntity<JsonNode> response =  defaultClient.get()
                 .uri(uri)
@@ -333,7 +333,7 @@ public class APIService {
     private void addDataset(String datasetName) {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
-        String uri  = String.format("http://%s/api/v1/dataset/", host);
+        String uri  = String.format("%s/api/v1/dataset/", host);
         int reportingDbId = 2;
         int adminId = 1;
         JsonNode requestBody = JsonNodeFactory.instance.objectNode()
@@ -363,7 +363,7 @@ public class APIService {
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
         //TODO: Only select columns that are needed
-        String uri  = String.format("http://%s/api/v1/dataset/%d", host, datasetId);
+        String uri  = String.format("%s/api/v1/dataset/%d", host, datasetId);
         LOG.info("URI is: {}", uri);
         ResponseEntity<JsonNode> response =  defaultClient.get()
                 .uri(uri)
@@ -378,7 +378,7 @@ public class APIService {
     private void updateColumnDescriptions(List<JsonNode> columns, String tableDescription, Integer datasetId){
         String token = getAccessToken();
         final String host = supersetApiProperties.getBaseUrl();
-        String uri  = String.format("http://%s/api/v1/dataset/%d?override_columns=true", host, datasetId);
+        String uri  = String.format("%s/api/v1/dataset/%d?override_columns=true", host, datasetId);
         JsonNode requestBody = JsonNodeFactory.instance.objectNode()
                 .put("description", tableDescription)
                 .set("columns", JsonNodeFactory.instance.arrayNode()
