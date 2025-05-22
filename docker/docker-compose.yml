@@ -5,7 +5,7 @@ services:
     build: ../
     image: pnthusi/superset-api-layer:latest
     ports:
-      - "8099:8080"
+      - "${API_PORT:-8079}:8080"
     restart: unless-stopped
     environment:
       SUPERSET_USERNAME: ${SUPERSET_USERNAME}
